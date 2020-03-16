@@ -13,11 +13,12 @@ from pandas import DataFrame
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib import rcParams
-from scipy.stats import binned_statistic
+from scipy.stats import binned_statistic, chisquare
 from scipy import stats
 
 
-cross_cat = pd.read_csv('./CrossMatchResults/abell-nvss.csv')
+cross_cat = pd.read_csv('./1.44GHz/Abell194_NVSS_1.44GHz.csv')
+#cross_cat = pd.read_csv('./1.38GHz/Abell194_NVSS_1.38GHz.csv')
 
 meerKAT_ra = np.asarray(cross_cat['RA'])
 meerKAT_dec = np.asarray(cross_cat['DEC'])
@@ -69,8 +70,8 @@ fratios_sorted = np.asarray(fratio_sorted['ratios'])
 #stderr = stdev/np.sqrt(len(flux_ratio))
 
 array = [fratios_sorted[0:2],fratios_sorted[2:8],fratios_sorted[8:20],
-         fratios_sorted[20:54],fratios_sorted[54:88],fratios_sorted[88:128],
-         fratios_sorted[128:170]]
+         fratios_sorted[20:53],fratios_sorted[53:87],fratios_sorted[87:127],
+         fratios_sorted[127:152]]
 
 std_err = [0]
 for i in array:
@@ -78,23 +79,47 @@ for i in array:
     std_err.append(err)
 
 '''
+PRIMARY BEAM MODEL EQUATION
+'''
+rho = np.linspace(0,90,170)
+theta_b = (1.28/1.5)**-1*57.5
+angle = (rho/theta_b)
+
+x = 1.189*np.pi*angle
+y = 1-4*(1.189*angle)**2
+z = x/y
+
+a_b = (np.cos(x)/y)**2
+
+PB_mean_stat = binned_statistic(rho, a_b, statistic='mean',
+                             bins=7, range=(0, 70))
+
+'''
+CHI-SQUARE CALCULATIONS
+'''
+fit_test = chisquare(mean_stat.statistic, PB_mean_stat.statistic)
+PB_mean = np.insert(PB_mean_stat.statistic,0,[1])
+'''
 BINNED FLUXES PLOT
 '''
 fig = plt.figure(figsize=(10,10))
 
 #plt.scatter(mean_stat.bin_edges, bin_dist, s=35,color='blue')
-plt.errorbar(mean_stat.bin_edges,bin_dist,yerr=std_err,fmt='o',ms=6,color='blue')
+plt.errorbar(mean_stat.bin_edges-5,bin_dist,yerr=std_err,fmt='o',ms=6,color='blue')
+plt.plot(rho,a_b,color='black')
+#plt.scatter(PB_mean_stat.bin_edges-5,PB_mean,color='black')
 plt.xlim(0,70)
 plt.ylim(0,1.6)
+#plt.yscale('log')
 plt.xlabel('Distance from field centre (arcmin)')
 plt.ylabel('Mean flux ratios (MeerKAT/NVSS)')
-plt.text(7, 0.8, '(2)')
-plt.text(17, 1.26, '(6)')
-plt.text(26, 0.86, '(12)')
-plt.text(36, 0.42, '(34)')
-plt.text(46, 0.19, '(34)')
-plt.text(56, 0.07, '(40)')
-plt.text(66, 0.027, '(42)')
+#plt.text(7, 0.8, '({:.0f})'.format(bin_count[0]))
+#plt.text(17, 1.26, '({:.0f})'.format(bin_count[1]))
+#plt.text(26, 0.86, '({:.0f})'.format(bin_count[2]))
+#plt.text(36, 0.42, '({:.0f})'.format(bin_count[3]))
+#plt.text(46, 0.19, '({:.0f})'.format(bin_count[4]))
+#plt.text(56, 0.07, '({:.0f})'.format(bin_count[5]))
+#plt.text(66, 0.027, '({:.0f})'.format(bin_count[6]))
 plt.grid()
 plt.show()
 
@@ -103,7 +128,7 @@ DISTANCE VS FLUX RATIOS PLOT
 '''
 #fig = plt.figure(figsize=(10,10))
 #
-##plt.scatter(distance, flux_ratio, s=15,color='teal')
+#plt.scatter(distance, flux_ratio, s=15,color='teal')
 #plt.errorbar(distance.value, flux_ratio, yerr=std_err, ms=4,fmt='o',color='teal')
 #plt.xlabel('Distance from field centre (arcmin)')
 #plt.yscale('log')
